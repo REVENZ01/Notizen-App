@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Notizen & Erinnerungen</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="bg-dark text-light">
+  <div class="container mt-4">
+    <h1 class="text-center text-primary">Notizen & Erinnerungen</h1>
+    
+    <p class="text-center">
+      <a href="http://127.0.0.1:5984/_utils/#/database/notizen/_all_docs" class="text-info" target="_blank">
+        CouchDB Admin (Fauxton) öffnen
+      </a>
+    </p>
+
+    <!-- Notiz-Formular -->
+    <form id="noteForm" class="d-flex justify-content-center mb-3">
+      <input type="text" id="noteInput" class="form-control w-50" placeholder="Neue Notiz eingeben">
+      <input type="datetime-local" id="reminderTime" class="form-control w-25 ms-2">
+      <button type="submit" class="btn btn-primary ms-2">Speichern</button>
+    </form>
+
+    <!-- Checklisten-Option -->
+    <div class="text-center mb-3">
+      <input type="checkbox" id="checklistToggle"> Checkliste aktivieren
+    </div>
+
+    <!-- Notizen Tabelle -->
+    <table class="table table-dark table-bordered text-light">
+      <thead>
+        <tr>
+          <th>Notiz</th>
+          <th>Erinnerung</th>
+          <th class="text-end">Aktionen</th>
+        </tr>
+      </thead>
+      <tbody id="notesTableBody">
+        <!-- Notizen werden hier dynamisch eingefügt -->
+      </tbody>
+    </table>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
+
+
+
+
+
+
+

@@ -1,0 +1,90 @@
+/* ==============================
+   🌙 Dunkles Design für Notizen-App
+   ============================== */
+
+   :root {
+    --background: #1e1e2e;
+    --foreground: #f8f8f2;
+    --primary: #ff79c6;
+    --secondary: #bd93f9;
+    --accent: #50fa7b;
+    --danger: #ff5555;
+    --gray: #44475a;
+    --dark-gray: #282a36;
+  }
+  
+  /* Gesamtes Layout auf dunkle Farben umstellen */
+  body {
+    font-family: 'Arial', sans-serif;
+    background-color: var(--background);
+    color: var(--foreground);
+    margin: 0;
+    padding: 20px;
+    text-align: center;
+  }
+  
+  /* Tabellen-Design */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  
+  th, td {
+    padding: 15px;
+    border: 1px solid var(--gray);
+  }
+  
+  /* Spaltenbreiten festlegen */
+  th:nth-child(1), td:nth-child(1) { 
+    width: 70%;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    text-align: left;
+  }
+  
+  th:nth-child(2), td:nth-child(2) { 
+    width: 15%;
+    text-align: center;
+  }
+  
+  th:nth-child(3), td:nth-child(3) { 
+    width: 15%;
+    text-align: right;
+    white-space: nowrap;
+  }
+  
+  /* Buttons exakt nebeneinander mit 8px Abstand */
+  .button-container {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+  
+  button.edit, button.delete {
+    width: 100px;
+    padding: 8px;
+    text-align: center;
+  }
+  
+  button.edit {
+    background: var(--accent);
+  }
+  
+  button.delete {
+    background: var(--danger);
+  }
+  
+  button.edit:hover {
+    background: var(--secondary);
+  }
+  
+  button.delete:hover {
+    background: #ff4444;
+  }
+  
+  
+  
+  
+  
+  
+  
