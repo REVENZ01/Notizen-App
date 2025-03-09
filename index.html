@@ -4,49 +4,70 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Notizen & Erinnerungen</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css">
+  <!-- Bulma CSS laden -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+  <!-- Unser eigenes CSS -->
+  <link rel="stylesheet" href="app.css">
 </head>
-<body class="bg-dark text-light">
-  <div class="container mt-4">
-    <h1 class="text-center text-primary">Notizen & Erinnerungen</h1>
-    
-    <p class="text-center">
-      <a href="http://127.0.0.1:5984/_utils/#/database/notizen/_all_docs" class="text-info" target="_blank">
-        CouchDB Admin (Fauxton) öffnen
-      </a>
-    </p>
+<body>
+  <section class="section">
+    <div class="container">
+      <h1 class="title" style="color: var(--primary);">Notizen & Erinnerungen</h1>
+      <p class="subtitle">
+        <a href="http://127.0.0.1:5984/_utils/#/database/notizen/_all_docs" target="_blank" style="color: var(--accent);">
+          CouchDB Admin (Fauxton) öffnen
+        </a>
+      </p>
 
-    <!-- Notiz-Formular -->
-    <form id="noteForm" class="d-flex justify-content-center mb-3">
-      <input type="text" id="noteInput" class="form-control w-50" placeholder="Neue Notiz eingeben">
-      <input type="datetime-local" id="reminderTime" class="form-control w-25 ms-2">
-      <button type="submit" class="btn btn-primary ms-2">Speichern</button>
-    </form>
+      <!-- Notiz-Formular -->
+      <form id="noteForm" class="field is-grouped">
+        <div class="control is-expanded">
+          <input type="text" id="noteInput" class="input" placeholder="Neue Notiz eingeben">
+        </div>
+        <div class="control">
+          <input type="datetime-local" id="reminderTime" class="input">
+        </div>
+        <div class="control">
+          <button type="submit" class="button is-primary">Speichern</button>
+        </div>
+      </form>
 
-    <!-- Checklisten-Option -->
-    <div class="text-center mb-3">
-      <input type="checkbox" id="checklistToggle"> Checkliste aktivieren
+      <!-- Notizen-Tabelle -->
+      <table class="table is-bordered is-fullwidth">
+        <thead>
+          <tr>
+            <th style="width:5%;">✓</th>
+            <th>Notiz</th>
+            <th>Erinnerung</th>
+            <th style="width:15%;">Aktionen</th>
+          </tr>
+        </thead>
+        <tbody id="notesTableBody">
+          <!-- Dynamisch befüllte Zeilen -->
+        </tbody>
+      </table>
     </div>
+  </section>
 
-    <!-- Notizen Tabelle -->
-    <table class="table table-dark table-bordered text-light">
-      <thead>
-        <tr>
-          <th>Notiz</th>
-          <th>Erinnerung</th>
-          <th class="text-end">Aktionen</th>
-        </tr>
-      </thead>
-      <tbody id="notesTableBody">
-        <!-- Notizen werden hier dynamisch eingefügt -->
-      </tbody>
-    </table>
-  </div>
-
+  <!-- Unser eigenes JavaScript -->
   <script src="app.js"></script>
 </body>
 </html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
