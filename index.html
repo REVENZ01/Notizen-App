@@ -7,17 +7,92 @@
   <!-- Bulma CSS laden -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
   <!-- Unser eigenes CSS -->
-  <link rel="stylesheet" href="app.css">
+  <link rel="stylesheet" href="styles.css">
+
+  <!-- Inline-Styles für den Badge (kannst du auch in styles.css verschieben) -->
+  <style>
+    .badge {
+      position: absolute;
+      top: -8px;      /* Feineinstellung je nach Button-Größe */
+      right: -8px;
+      background-color: red;
+      color: white;
+      border-radius: 50%;
+      padding: 4px 8px;
+      font-size: 0.8rem;
+      font-weight: bold;
+      pointer-events: none;  /* Der Badge fängt keine Klicks ab */
+    }
+  </style>
 </head>
 <body>
-  <section class="section">
+  <!-- Login/Registrierungs-Sektion -->
+  <section id="loginSection" class="section">
     <div class="container">
-      <h1 class="title" style="color: var(--primary);">Notizen & Erinnerungen</h1>
-      <p class="subtitle">
-        <a href="http://127.0.0.1:5984/_utils/#/database/notizen/_all_docs" target="_blank" style="color: var(--accent);">
-          CouchDB Admin (Fauxton) öffnen
-        </a>
-      </p>
+      <h1 class="title" style="color: var(--primary);">Login</h1>
+      
+      <div class="field">
+        <label class="label">Benutzername</label>
+        <div class="control">
+          <input type="text" id="loginUsername" class="input" placeholder="Benutzername">
+        </div>
+      </div>
+      
+      <div class="field">
+        <label class="label">Passwort</label>
+        <div class="control">
+          <input type="password" id="loginPassword" class="input" placeholder="Passwort">
+        </div>
+      </div>
+
+      <!-- Checkbox zum Anzeigen des Passworts -->
+      <div class="field">
+        <label class="checkbox">
+          <input type="checkbox" id="showPasswordCheckbox">
+          Passwort anzeigen
+        </label>
+      </div>
+
+      <div class="field is-grouped" style="margin-top: 1rem;">
+        <div class="control">
+          <button id="loginButton" class="button is-primary">Login</button>
+        </div>
+        <div class="control">
+          <button id="registerButton" class="button is-info">Registrieren</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- App-Sektion (sichtbar nach Login) -->
+  <section id="appSection" class="section" style="display:none;">
+    <div class="container">
+      <div class="level">
+        <div class="level-left">
+          <h1 class="title" style="color: var(--primary);">Notizen & Erinnerungen</h1>
+        </div>
+        <div class="level-right">
+          <div class="buttons">
+            <!-- Postfach-Button mit Badge -->
+            <button id="mailboxButton" class="button is-info" style="position: relative;">
+              Postfach
+              <span id="invitationBadge" class="badge" style="display: none;">0</span>
+            </button>
+
+            <button id="inviteButton" class="button is-info">Benutzer einladen</button>
+            <button id="logoutButton" class="button is-danger">Logout</button>
+          </div>
+        </div>
+      </div>
+      <p class="subtitle" id="welcomeMessage"></p>
+
+      <!-- Postfach (Einladungen) -->
+      <div id="invitationsBox" class="box" style="display:none;">
+        <h2 class="subtitle" style="color: var(--accent);">Einladungen</h2>
+        <div id="invitationsContainer">
+          <!-- Hier werden Einladungen angezeigt -->
+        </div>
+      </div>
 
       <!-- Notiz-Formular -->
       <form id="noteForm" class="field is-grouped">
@@ -38,6 +113,7 @@
           <tr>
             <th style="width:5%;">✓</th>
             <th>Notiz</th>
+            <th>Von</th>
             <th>Erinnerung</th>
             <th style="width:15%;">Aktionen</th>
           </tr>
@@ -53,6 +129,11 @@
   <script src="app.js"></script>
 </body>
 </html>
+
+
+
+
+
 
 
 
