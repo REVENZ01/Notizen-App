@@ -9,11 +9,14 @@
   <!-- Unser eigenes CSS -->
   <link rel="stylesheet" href="styles.css">
 
-  <!-- Inline-Styles für den Badge (kannst du auch in styles.css verschieben) -->
+  <!-- CryptoJS für SHA256 Hashing -->
+  <script src="https://cdn.jsdelivr.net/npm/crypto-js@4.1.1/crypto-js.min.js"></script>
+
+  <!-- Inline-Styles für den Badge -->
   <style>
     .badge {
       position: absolute;
-      top: -8px;      /* Feineinstellung je nach Button-Größe */
+      top: -8px;
       right: -8px;
       background-color: red;
       color: white;
@@ -21,7 +24,7 @@
       padding: 4px 8px;
       font-size: 0.8rem;
       font-weight: bold;
-      pointer-events: none;  /* Der Badge fängt keine Klicks ab */
+      pointer-events: none;
     }
   </style>
 </head>
@@ -64,12 +67,51 @@
     </div>
   </section>
 
-  <!-- App-Sektion (sichtbar nach Login) -->
+  <!-- Profil bearbeiten Ansicht (separate Seite) -->
+  <section id="profileSection" class="section" style="display:none;">
+    <div class="container">
+      <h1 class="title" style="color: var(--primary);">Profil bearbeiten</h1>
+      <form id="profileForm" class="box">
+        <div class="field">
+          <label class="label">Neuer Benutzername</label>
+          <div class="control">
+            <input type="text" id="profileUsername" class="input">
+          </div>
+        </div>
+        <div class="field">
+          <label class="label">Profilbild (URL)</label>
+          <div class="control">
+            <input type="text" id="profileImage" class="input" placeholder="http://...">
+          </div>
+        </div>
+        <div class="field">
+          <label class="label">Vorschau</label>
+          <div class="control">
+            <img id="profilePreview" src="" alt="Profilbild" style="max-width: 100px; border-radius: 50%;">
+          </div>
+        </div>
+        <div class="field is-grouped">
+          <div class="control">
+            <button type="button" id="saveProfileButton" class="button is-primary">Speichern</button>
+          </div>
+          <div class="control">
+            <button type="button" id="cancelProfileButton" class="button is-danger">Abbrechen</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <!-- App-Sektion -->
   <section id="appSection" class="section" style="display:none;">
     <div class="container">
-      <div class="level">
+      <!-- Header mit Profilinfo -->
+      <div id="headerBar" class="level">
         <div class="level-left">
-          <h1 class="title" style="color: var(--primary);">Notizen & Erinnerungen</h1>
+          <div id="profileInfo" style="display: flex; align-items: center; gap: 10px;">
+            <img id="profilePic" src="" alt="Profilbild" style="width:50px; height:50px; border-radius:50%; display: none;">
+            <span id="welcomeMessage"></span>
+          </div>
         </div>
         <div class="level-right">
           <div class="buttons">
@@ -78,19 +120,29 @@
               Postfach
               <span id="invitationBadge" class="badge" style="display: none;">0</span>
             </button>
-
+            <!-- Admin: Nur der Admin sieht "Benutzer einladen" und "Nachricht" -->
             <button id="inviteButton" class="button is-info">Benutzer einladen</button>
+            <button id="messageButton" class="button is-info" style="display:none;">Nachricht</button>
+            <button id="profileButton" class="button is-warning">Profil bearbeiten</button>
+            <button id="participantsButton" class="button is-link">Teilnehmer</button>
             <button id="logoutButton" class="button is-danger">Logout</button>
           </div>
         </div>
       </div>
-      <p class="subtitle" id="welcomeMessage"></p>
 
-      <!-- Postfach (Einladungen) -->
+      <!-- Teilnehmer-Box (nur für Owner) -->
+      <div id="participantsSection" class="box" style="display:none;">
+        <h2 class="subtitle" style="color: var(--accent);">Teilnehmer</h2>
+        <div id="participantsContainer">
+          <!-- Hier werden die aktuellen Teilnehmer (allowedViewers) angezeigt -->
+        </div>
+      </div>
+
+      <!-- Postfach (Nachrichten) -->
       <div id="invitationsBox" class="box" style="display:none;">
-        <h2 class="subtitle" style="color: var(--accent);">Einladungen</h2>
+        <h2 class="subtitle" style="color: var(--accent);">Nachrichten</h2>
         <div id="invitationsContainer">
-          <!-- Hier werden Einladungen angezeigt -->
+          <!-- Hier werden Nachrichten (und ggf. noch Einladungen) angezeigt -->
         </div>
       </div>
 
@@ -107,7 +159,7 @@
         </div>
       </form>
 
-      <!-- Notizen-Tabelle -->
+      <!-- Notizen-Tabelle (ohne Teilnehmer-Spalte) -->
       <table class="table is-bordered is-fullwidth">
         <thead>
           <tr>
@@ -129,30 +181,3 @@
   <script src="app.js"></script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

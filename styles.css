@@ -1,17 +1,16 @@
 :root {
-  /* Nutze #1e293b als einheitlichen Hintergrund für alles */
-  --background: #1e293b;   
-  --foreground: #f1f5f9;    /* Sehr helle Schrift für guten Kontrast */
-  --primary: #3b82f6;       /* Kräftiges, klares Blau */
-  --secondary: #93c5fd;     /* Hellere Variante des Primärtons */
-  --accent: #38bdf8;        /* Akzent in Türkis-Blau */
-  --danger: #ef4444;        /* Kräftiges Rot für Warnungen/Löschen */
-  --gray: #475569;          /* Bläuliches Grau für Rahmen/Abgrenzungen */
-  /* Wähle einen anderen Ton für ausgewählte Zeilen */
-  --selected-bg: #2a2a3a;   /* Etwas dunkler/heller, damit man den Unterschied sieht */
+  /* Einheitlicher Hintergrund */
+  --background: #1e293b;
+  --foreground: #f1f5f9;    
+  --primary: #3b82f6;       
+  --secondary: #93c5fd;     
+  --accent: #38bdf8;        
+  --danger: #ef4444;        
+  --gray: #475569;          
+  --selected-bg: #2a2a3a;
 }
 
-/* Globaler Hintergrund und Textfarbe */
+/* Global */
 html, body {
   background-color: #1e1e2e;
   color: var(--foreground) !important;
@@ -21,34 +20,28 @@ html, body {
   padding: 0;
 }
 
-/* Bulma-Sektionen und Container auf denselben Hintergrund setzen */
+/* Sektionen & Container */
 .section, .container {
   color: var(--foreground) !important;
 }
 
-/* Box-Hintergrund auf dieselbe Variable setzen */
+/* Box */
 .box {
   background-color: var(--background) !important;
   color: var(--foreground) !important;
   border: 1px solid var(--gray) !important;
 }
 
+/* Tabelle – nur äußerer Rahmen gerundet */
 .table {
-  /* WICHTIG: Rundungen an einer Tabelle benötigen separate + spacing: 0 */
   border-collapse: separate !important;
   border-spacing: 0 !important;
-
-  /* Hier: Nur der äußere Rahmen soll gerundet sein */
   border-radius: 15px;
   overflow: hidden;
-
-  /* Hintergrund, Textfarbe, Rahmen etc. */
   background-color: var(--background) !important;
   color: var(--foreground) !important;
   border: 2px solid var(--gray) !important;
 }
-
-/* Hier KEIN border-radius mehr, damit nicht jede Zelle einzeln gerundet ist */
 .table th,
 .table td {
   background-color: var(--background) !important;
@@ -56,12 +49,17 @@ html, body {
   border-color: var(--gray) !important;
 }
 
-
-
+/* Profilbilder in Tabellenzellen */
+.table td img {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  margin-right: 8px;
+}
 
 /* Formulareingaben */
 .input {
-  background-color: #2a2a3a !important; /* Falls du das noch dunkler möchtest, setze hier var(--background) */
+  background-color: #2a2a3a !important;
   color: #ffffff !important;
   border-color: var(--gray) !important;
 }
@@ -69,7 +67,7 @@ html, body {
   color: var(--accent) !important;
 }
 
-/* Buttons – überschreiben Bulma-Standardeinstellungen */
+/* Buttons */
 .button.is-primary {
   background-color: var(--primary) !important;
   border-color: var(--primary) !important;
@@ -78,7 +76,7 @@ html, body {
   background-color: var(--secondary) !important;
 }
 
-/* Hervorheben von Zeilen, wenn ausgewählt */
+/* Markierte Zeilen */
 .selected-row,
 .selected-row td {
   background-color: var(--selected-bg) !important;
@@ -88,25 +86,15 @@ html, body {
   opacity: 0.5;
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  
-  
-  
-  
-  
-  
-  
+/* Profilinfo im Header */
+#profileInfo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+#profileInfo img {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  object-fit: cover;
+}

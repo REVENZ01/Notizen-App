@@ -1,34 +1,51 @@
 /***************************************************
- * app.js – mit Basic Auth, Einladungspostfach, 
- * Anzeige des Notizen-Autors, Checkbox-Status,
- * Badge-Benachrichtigung, "Passwort anzeigen" und
- * Systembenachrichtigung bei Erinnerung
+ * app.js – mit Basic Auth, Postfach (Einladungen/Nachrichten),
+ * Anzeige des Notizen-Autors (mit Profilbild in der "Von"-Spalte),
+ * Checkbox-Status, Badge-Benachrichtigung, "Passwort anzeigen",
+ * Systembenachrichtigung bei Erinnerung, Hashing (CryptoJS SHA256)
+ * für Passwörter, Profil bearbeiten und Teilnehmerverwaltung
  **************************************************/
 
-// ADMIN-CREDENTIALS für CouchDB (bitte anpassen)
+// ADMIN-CREDENTIALS (anpassen)
 const adminUser = "admin";
 const adminPass = "187LOL187";
 const adminAuthHeader = "Basic " + btoa(adminUser + ":" + adminPass);
 
-// URLs zu den Datenbanken
-const dbUrl = "http://127.0.0.1:5984/notizen";             // Notizen-DB
-const userDbUrl = "http://127.0.0.1:5984/users";             // User-DB
-const invitationDbUrl = "http://127.0.0.1:5984/invitations"; // Einladungen-DB
+// Datenbank-URLs
+const dbUrl = "http://127.0.0.1:5984/notizen";
+const userDbUrl = "http://127.0.0.1:5984/users";
+const invitationDbUrl = "http://127.0.0.1:5984/invitations";
 
 // Aktuell eingeloggter User
 let currentUser = null;
 let currentUserRole = null;
 
-// Beim DOM-Load ein dunkles Farbschema erzwingen (Fallback) und "Passwort anzeigen"-Checkbox verarbeiten
+// Einfaches statisches Salt (nur Demo)
+const SALT = "myFixedSalt12345";
+
+// Standard-Profilbild URL
+const DEFAULT_PROFILE_IMAGE = "https://static.vecteezy.com/ti/gratis-vektor/t2/2534006-social-media-chatting-online-leeres-profil-bild-kopf-und-korper-symbol-menschen-stehend-symbol-grauer-hintergrund-kostenlos-vektor.jpg";
+
+/**
+ * Hashing mit CryptoJS SHA256.
+ */
+function hashPassword(plainText) {
+  return CryptoJS.SHA256(plainText + SALT).toString();
+}
+
+/* ---------------------------
+   INITIALISIERUNG & THEME
+--------------------------- */
 document.addEventListener("DOMContentLoaded", () => {
+  // Style anpassen
   document.body.style.setProperty("background-color", "#1e1e2e", "important");
   document.body.style.setProperty("color", "#f8f8f2", "important");
-  const elems = document.querySelectorAll(".container, .table, thead, tbody, tr, th, td");
-  elems.forEach(el => {
+  document.querySelectorAll(".container, .table, thead, tbody, tr, th, td").forEach(el => {
     el.style.setProperty("background-color", "#1e1e2e", "important");
     el.style.setProperty("color", "#f8f8f2", "important");
   });
 
+  // "Passwort anzeigen"
   const showPwdCheckbox = document.getElementById("showPasswordCheckbox");
   if (showPwdCheckbox) {
     showPwdCheckbox.addEventListener("change", (e) => {
@@ -36,57 +53,40 @@ document.addEventListener("DOMContentLoaded", () => {
       pwdField.type = e.target.checked ? "text" : "password";
     });
   }
+
+  // Teilnehmer-Bereich
+  document.getElementById("participantsButton").addEventListener("click", toggleParticipantsSection);
 });
 
 /* ---------------------------
-   LOGIN / REGISTRIERUNG
----------------------------- */
-
-// Login-Funktion
+   LOGIN & REGISTRIERUNG
+--------------------------- */
 document.getElementById("loginButton").addEventListener("click", login);
 function login() {
   const username = document.getElementById("loginUsername").value;
   const password = document.getElementById("loginPassword").value;
-  if (username.trim() === "" || password.trim() === "") {
+  if (!username.trim() || !password.trim()) {
     alert("Bitte Benutzername und Passwort eingeben.");
     return;
   }
-
-  // Nutzer-Dokument aus der "users"-DB abrufen (mit Admin-Credentials)
   fetch(`${userDbUrl}/${encodeURIComponent(username)}`, {
     method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": adminAuthHeader
-    }
+    headers: { "Content-Type": "application/json", "Authorization": adminAuthHeader }
   })
     .then(response => {
-      if (!response.ok) {
-        throw new Error("Benutzer nicht gefunden.");
-      }
+      if (!response.ok) throw new Error("Benutzer nicht gefunden.");
       return response.json();
     })
     .then(userDoc => {
-      if (userDoc.password === password) {
-        // Passwort stimmt -> einloggen
+      if (hashPassword(password) === userDoc.password) {
         currentUser = userDoc._id;
         currentUserRole = userDoc.role || "user";
-
-        // Login-Bereich ausblenden, App-Bereich einblenden
         document.getElementById("loginSection").style.display = "none";
         document.getElementById("appSection").style.display = "block";
-        document.getElementById("welcomeMessage").textContent = "Willkommen, " + currentUser;
-
-        // Bei erfolgreichem Login um Erlaubnis für Notifications bitten
-        if (Notification.permission !== "granted") {
-          Notification.requestPermission();
-        }
-
-        // Notizen und Einladungen laden sowie Erinnerungen prüfen
+        updateProfileDisplay();
+        if (Notification.permission !== "granted") Notification.requestPermission();
         fetchNotes();
         fetchInvitationBadgeCount();
-
-        // Starte regelmäßige Überprüfung der Erinnerungen (alle 30 Sekunden)
         setInterval(checkReminders, 30000);
       } else {
         alert("Falsches Passwort!");
@@ -98,53 +98,212 @@ function login() {
     });
 }
 
-// Registrierungs-Funktion
 document.getElementById("registerButton").addEventListener("click", register);
 function register() {
   const username = document.getElementById("loginUsername").value;
   const password = document.getElementById("loginPassword").value;
-  if (username.trim() === "" || password.trim() === "") {
+  if (!username.trim() || !password.trim()) {
     alert("Bitte Benutzername und Passwort eingeben.");
     return;
   }
-
   const userDoc = {
     _id: username,
-    password: password,
-    role: username === "admin" ? "admin" : "user"
+    password: hashPassword(password),
+    role: username === "admin" ? "admin" : "user",
+    profilePicture: DEFAULT_PROFILE_IMAGE,
+    allowedViewers: []
   };
-
   fetch(`${userDbUrl}/${encodeURIComponent(username)}`, {
     method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": adminAuthHeader
-    },
+    headers: { "Content-Type": "application/json", "Authorization": adminAuthHeader },
     body: JSON.stringify(userDoc)
   })
     .then(response => {
-      if (response.ok) {
-        alert("Registrierung erfolgreich! Bitte einloggen.");
-      } else {
-        throw new Error("Registrierung fehlgeschlagen (vielleicht existiert der User schon?).");
-      }
+      if (response.ok) alert("Registrierung erfolgreich! Bitte einloggen.");
+      else throw new Error("Registrierung fehlgeschlagen (User existiert evtl. schon).");
     })
     .catch(err => alert(err.message));
 }
 
-// Logout-Funktion
-document.getElementById("logoutButton").addEventListener("click", () => {
+document.getElementById("logoutButton").addEventListener("click", logout);
+function logout() {
   currentUser = null;
   currentUserRole = null;
   document.getElementById("appSection").style.display = "none";
   document.getElementById("loginSection").style.display = "block";
+}
+
+/* ---------------------------
+   PROFIL BEARBEITEN
+--------------------------- */
+document.getElementById("profileButton").addEventListener("click", showProfileSection);
+function showProfileSection() {
+  document.getElementById("appSection").style.display = "none";
+  document.getElementById("profileSection").style.display = "block";
+  fetch(`${userDbUrl}/${encodeURIComponent(currentUser)}`, {
+    method: "GET",
+    headers: { "Authorization": adminAuthHeader }
+  })
+    .then(res => {
+      if (!res.ok) throw new Error("Benutzer nicht gefunden");
+      return res.json();
+    })
+    .then(userDoc => {
+      document.getElementById("profileUsername").value = userDoc._id;
+      document.getElementById("profileImage").value = userDoc.profilePicture || "";
+      document.getElementById("profilePreview").src = userDoc.profilePicture || DEFAULT_PROFILE_IMAGE;
+    })
+    .catch(err => console.error(err));
+}
+
+document.getElementById("cancelProfileButton").addEventListener("click", () => {
+  document.getElementById("profileSection").style.display = "none";
+  document.getElementById("appSection").style.display = "block";
 });
+
+document.getElementById("saveProfileButton").addEventListener("click", saveProfile);
+function saveProfile() {
+  const newUsername = document.getElementById("profileUsername").value;
+  const newImage = document.getElementById("profileImage").value || DEFAULT_PROFILE_IMAGE;
+  fetch(`${userDbUrl}/${encodeURIComponent(currentUser)}`, {
+    method: "GET",
+    headers: { "Authorization": adminAuthHeader }
+  })
+    .then(res => {
+      if (!res.ok) throw new Error("Benutzer nicht gefunden");
+      return res.json();
+    })
+    .then(oldDoc => {
+      if (newUsername === currentUser) {
+        oldDoc.profilePicture = newImage;
+        return fetch(`${userDbUrl}/${encodeURIComponent(currentUser)}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json", "Authorization": adminAuthHeader },
+          body: JSON.stringify(oldDoc)
+        }).then(() => {
+          alert("Profil aktualisiert.");
+          document.getElementById("profileSection").style.display = "none";
+          document.getElementById("appSection").style.display = "block";
+          updateProfileDisplay();
+        });
+      } else {
+        const newDoc = {
+          _id: newUsername,
+          password: oldDoc.password,
+          role: oldDoc.role,
+          profilePicture: newImage,
+          allowedViewers: oldDoc.allowedViewers || []
+        };
+        return fetch(`${userDbUrl}/${encodeURIComponent(newUsername)}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json", "Authorization": adminAuthHeader },
+          body: JSON.stringify(newDoc)
+        })
+          .then(res => {
+            if (!res.ok) throw new Error("Neuer Benutzername existiert evtl. bereits.");
+            return updateNotesForOwner(currentUser);
+          })
+          .then(() => fetch(`${userDbUrl}/${encodeURIComponent(currentUser)}?rev=${oldDoc._rev}`, {
+            method: "DELETE",
+            headers: { "Authorization": adminAuthHeader }
+          }))
+          .then(() => {
+            alert("Benutzername aktualisiert. Bitte neu einloggen.");
+            logout();
+          })
+          .catch(err => console.error(err));
+      }
+    })
+    .catch(err => console.error(err));
+}
+
+function updateProfileDisplay() {
+  fetch(`${userDbUrl}/${encodeURIComponent(currentUser)}`, {
+    method: "GET",
+    headers: { "Authorization": adminAuthHeader }
+  })
+    .then(res => res.json())
+    .then(userDoc => {
+      document.getElementById("welcomeMessage").textContent = "Willkommen, " + userDoc._id;
+      const profilePic = document.getElementById("profilePic");
+      profilePic.src = userDoc.profilePicture || DEFAULT_PROFILE_IMAGE;
+      profilePic.style.display = "block";
+      // Nachricht-Button nur anzeigen, wenn Admin
+      const msgBtn = document.getElementById("messageButton");
+      if (userDoc.role === "admin") {
+        msgBtn.style.display = "inline-block";
+      } else {
+        msgBtn.style.display = "none";
+      }
+    })
+    .catch(err => console.error(err));
+}
+
+/* ---------------------------
+   TEILNEHMER VERWALTEN
+--------------------------- */
+function toggleParticipantsSection() {
+  const section = document.getElementById("participantsSection");
+  if (!section.style.display || section.style.display === "none") {
+    section.style.display = "block";
+    fetchParticipants();
+  } else {
+    section.style.display = "none";
+  }
+}
+function fetchParticipants() {
+  fetch(`${userDbUrl}/${encodeURIComponent(currentUser)}`, {
+    method: "GET",
+    headers: { "Authorization": adminAuthHeader }
+  })
+    .then(res => res.json())
+    .then(userDoc => {
+      const container = document.getElementById("participantsContainer");
+      container.innerHTML = "";
+      const participants = userDoc.allowedViewers || [];
+      if (!participants.length) {
+        container.innerHTML = "<p>Keine Teilnehmer.</p>";
+      } else {
+        participants.forEach(participant => {
+          const div = document.createElement("div");
+          div.classList.add("box");
+          div.style.display = "flex";
+          div.style.justifyContent = "space-between";
+          div.style.alignItems = "center";
+          div.innerHTML = `<span>${participant}</span>`;
+          const removeBtn = document.createElement("button");
+          removeBtn.textContent = "Entfernen";
+          removeBtn.classList.add("button", "is-danger", "is-small");
+          removeBtn.addEventListener("click", () => removeParticipant(participant));
+          div.appendChild(removeBtn);
+          container.appendChild(div);
+        });
+      }
+    })
+    .catch(err => console.error(err));
+}
+function removeParticipant(participant) {
+  fetch(`${userDbUrl}/${encodeURIComponent(currentUser)}`, {
+    method: "GET",
+    headers: { "Authorization": adminAuthHeader }
+  })
+    .then(res => res.json())
+    .then(userDoc => {
+      userDoc.allowedViewers = (userDoc.allowedViewers || []).filter(u => u !== participant);
+      return fetch(`${userDbUrl}/${encodeURIComponent(currentUser)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "Authorization": adminAuthHeader },
+        body: JSON.stringify(userDoc)
+      });
+    })
+    .then(() => updateNotesForOwner(currentUser))
+    .then(() => fetchParticipants())
+    .catch(err => console.error(err));
+}
 
 /* ---------------------------
    NOTIZEN-FUNKTIONEN
----------------------------- */
-
-// Alle Notizen abrufen und entsprechend filtern
+--------------------------- */
 function fetchNotes() {
   fetch(`${dbUrl}/_all_docs?include_docs=true`, {
     method: "GET",
@@ -156,13 +315,11 @@ function fetchNotes() {
       tableBody.innerHTML = "";
       data.rows.forEach(row => {
         const note = row.doc;
-        // Bedingungen: Admin sieht alles; ansonsten: Owner oder explizit geteilt
         const isOwner = (note.owner === currentUser);
         const isShared = Array.isArray(note.sharedWith) && note.sharedWith.includes(currentUser);
         if (currentUserRole === "admin" || isOwner || isShared) {
           const tr = document.createElement("tr");
-
-          // Checkbox-Spalte
+          // Checkbox
           const tdCheckbox = document.createElement("td");
           const checkbox = document.createElement("input");
           checkbox.type = "checkbox";
@@ -173,23 +330,46 @@ function fetchNotes() {
           }
           tdCheckbox.appendChild(checkbox);
           tr.appendChild(tdCheckbox);
-
-          // Notiz-Spalte
+          // Notiztext
           const tdText = document.createElement("td");
           tdText.textContent = note.text;
           tr.appendChild(tdText);
-
-          // Owner-Spalte
+          // "Von"-Spalte: Profilbild + Name
           const tdOwner = document.createElement("td");
-          tdOwner.textContent = note.owner;
+          const ownerContainer = document.createElement("div");
+          ownerContainer.style.display = "flex";
+          ownerContainer.style.alignItems = "center";
+          // Bild-Element
+          const ownerImg = document.createElement("img");
+          ownerImg.style.width = "30px";
+          ownerImg.style.height = "30px";
+          ownerImg.style.borderRadius = "50%";
+          ownerImg.style.marginRight = "8px";
+          ownerImg.src = DEFAULT_PROFILE_IMAGE;
+          // Asynchron das tatsächliche Profilbild laden (falls vorhanden)
+          fetch(`${userDbUrl}/${encodeURIComponent(note.owner)}`, {
+            method: "GET",
+            headers: { "Authorization": adminAuthHeader }
+          })
+            .then(res => res.json())
+            .then(userDoc => {
+              if (userDoc.profilePicture && userDoc.profilePicture.trim() !== "") {
+                ownerImg.src = userDoc.profilePicture;
+              }
+            })
+            .catch(err => console.error(err));
+          // Name-Element
+          const ownerName = document.createElement("span");
+          ownerName.textContent = note.owner;
+          ownerContainer.appendChild(ownerImg);
+          ownerContainer.appendChild(ownerName);
+          tdOwner.appendChild(ownerContainer);
           tr.appendChild(tdOwner);
-
-          // Erinnerung-Spalte
+          // Erinnerung
           const tdReminder = document.createElement("td");
           tdReminder.textContent = note.reminder ? new Date(note.reminder).toLocaleString() : "Keine";
           tr.appendChild(tdReminder);
-
-          // Aktionen-Spalte
+          // Aktionen (Bearbeiten/Löschen)
           const tdActions = document.createElement("td");
           tdActions.classList.add("has-text-right");
           const editBtn = document.createElement("button");
@@ -197,17 +377,13 @@ function fetchNotes() {
           editBtn.classList.add("button", "is-success", "is-small");
           editBtn.addEventListener("click", () => {
             const newText = prompt("Neuer Text:", note.text);
-            if (newText) {
-              updateNote(note._id, note._rev, { text: newText });
-            }
+            if (newText) updateNote(note._id, note._rev, { text: newText });
           });
           const deleteBtn = document.createElement("button");
           deleteBtn.textContent = "Löschen";
           deleteBtn.classList.add("button", "is-danger", "is-small");
           deleteBtn.addEventListener("click", () => {
-            if (confirm("Wirklich löschen?")) {
-              deleteNote(note._id, note._rev);
-            }
+            if (confirm("Wirklich löschen?")) deleteNote(note._id, note._rev);
           });
           const actionDiv = document.createElement("div");
           actionDiv.classList.add("buttons");
@@ -215,22 +391,14 @@ function fetchNotes() {
           actionDiv.appendChild(deleteBtn);
           tdActions.appendChild(actionDiv);
           tr.appendChild(tdActions);
-
-          // Checkbox-Event: Änderung speichern und DB aktualisieren
+          // Checkbox-Event: completed-Status aktualisieren
           checkbox.addEventListener("change", () => {
             const newCompleted = checkbox.checked;
-            if (newCompleted) {
-              tr.classList.add("selected-row");
-              editBtn.disabled = true;
-              deleteBtn.disabled = true;
-            } else {
-              tr.classList.remove("selected-row");
-              editBtn.disabled = false;
-              deleteBtn.disabled = false;
-            }
+            tr.classList.toggle("selected-row", newCompleted);
+            editBtn.disabled = newCompleted;
+            deleteBtn.disabled = newCompleted;
             updateNote(note._id, note._rev, { completed: newCompleted });
           });
-
           tableBody.appendChild(tr);
         }
       });
@@ -238,27 +406,32 @@ function fetchNotes() {
     .catch(error => console.error("Error fetching notes:", error));
 }
 
-// Notiz hinzufügen (Owner = currentUser, completed und notified standardmäßig false)
 function addNote(noteText, reminderTime) {
-  const note = {
-    text: noteText,
-    reminder: reminderTime ? new Date(reminderTime).toISOString() : null,
-    createdAt: new Date().toISOString(),
-    owner: currentUser,
-    sharedWith: [],
-    completed: false,
-    notified: false
-  };
-  fetch(dbUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "Authorization": adminAuthHeader },
-    body: JSON.stringify(note)
+  fetch(`${userDbUrl}/${encodeURIComponent(currentUser)}`, {
+    method: "GET",
+    headers: { "Authorization": adminAuthHeader }
   })
+    .then(res => res.json())
+    .then(userDoc => {
+      const note = {
+        text: noteText,
+        reminder: reminderTime ? new Date(reminderTime).toISOString() : null,
+        createdAt: new Date().toISOString(),
+        owner: currentUser,
+        sharedWith: userDoc.allowedViewers || [],
+        completed: false,
+        notified: false
+      };
+      return fetch(dbUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": adminAuthHeader },
+        body: JSON.stringify(note)
+      });
+    })
     .then(() => fetchNotes())
     .catch(error => console.error("Error adding note:", error));
 }
 
-// Notiz aktualisieren
 function updateNote(id, rev, updates) {
   fetch(`${dbUrl}/${id}`, {
     method: "GET",
@@ -277,7 +450,6 @@ function updateNote(id, rev, updates) {
     .catch(error => console.error("Error updating note:", error));
 }
 
-// Notiz löschen
 function deleteNote(id, rev) {
   fetch(`${dbUrl}/${id}?rev=${rev}`, {
     method: "DELETE",
@@ -287,12 +459,11 @@ function deleteNote(id, rev) {
     .catch(error => console.error("Error deleting note:", error));
 }
 
-// Formular zum Hinzufügen von Notizen
 document.getElementById("noteForm").addEventListener("submit", event => {
   event.preventDefault();
   const noteText = document.getElementById("noteInput").value;
   const reminderTime = document.getElementById("reminderTime").value;
-  if (noteText.trim() !== "") {
+  if (noteText.trim()) {
     addNote(noteText, reminderTime);
     document.getElementById("noteInput").value = "";
     document.getElementById("reminderTime").value = "";
@@ -300,10 +471,9 @@ document.getElementById("noteForm").addEventListener("submit", event => {
 });
 
 /* ---------------------------
-   EINLADUNGEN / POSTFACH
----------------------------- */
-
-// Einladung senden: Es wird ein Einladungseintrag in der "invitations"-DB angelegt.
+   EINLADUNGEN / NACHRICHTEN (POSTFACH)
+--------------------------- */
+// Einladung senden (wie gehabt)
 document.getElementById("inviteButton").addEventListener("click", inviteUser);
 function inviteUser() {
   const inviteUsername = prompt("Geben Sie den Benutzernamen ein, den Sie einladen möchten:");
@@ -312,6 +482,7 @@ function inviteUser() {
     from: currentUser,
     to: inviteUsername,
     createdAt: new Date().toISOString()
+    // type nicht gesetzt → Einladung
   };
   fetch(invitationDbUrl, {
     method: "POST",
@@ -322,9 +493,7 @@ function inviteUser() {
       if (response.ok) {
         alert("Einladung an " + inviteUsername + " gesendet.");
         fetchInvitationBadgeCount();
-      } else {
-        throw new Error("Einladung konnte nicht gesendet werden.");
-      }
+      } else throw new Error("Einladung konnte nicht gesendet werden.");
     })
     .catch(err => {
       console.error(err);
@@ -332,18 +501,61 @@ function inviteUser() {
     });
 }
 
-// Postfach-Button: Beim Klick das Postfach ein-/ausblenden und Einladungen abrufen
+// "Nachricht" senden – nur Admin
+document.getElementById("messageButton").addEventListener("click", sendMessage);
+function sendMessage() {
+  if (currentUserRole !== "admin") {
+    alert("Nur der Admin kann Nachrichten senden.");
+    return;
+  }
+  const messageText = prompt("Bitte geben Sie die Nachricht ein, die an alle User gesendet werden soll:");
+  if (!messageText || messageText.trim() === "") return;
+  fetch(`${userDbUrl}/_all_docs?include_docs=true`, {
+    method: "GET",
+    headers: { "Authorization": adminAuthHeader }
+  })
+    .then(response => response.json())
+    .then(data => {
+      const userDocs = data.rows.map(row => row.doc);
+      const messagePromises = userDocs.map(userDoc => {
+         const messageObj = {
+           from: currentUser,
+           to: userDoc._id,
+           text: messageText,
+           createdAt: new Date().toISOString(),
+           type: "message" // Kennzeichnung als Nachricht
+         };
+         return fetch(invitationDbUrl, {
+           method: "POST",
+           headers: { "Content-Type": "application/json", "Authorization": adminAuthHeader },
+           body: JSON.stringify(messageObj)
+         });
+      });
+      return Promise.all(messagePromises);
+    })
+    .then(() => {
+       alert("Nachricht wurde an alle User gesendet.");
+       fetchInvitationBadgeCount();
+       fetchInvitations();
+    })
+    .catch(err => {
+      console.error(err);
+      alert("Fehler beim Senden der Nachricht.");
+    });
+}
+
+// Mailbox öffnen/schließen: Bei Schließen wird die Badge zurückgesetzt
 document.getElementById("mailboxButton").addEventListener("click", () => {
   const mailboxSection = document.getElementById("invitationsBox");
-  if (mailboxSection.style.display === "none") {
+  if (!mailboxSection.style.display || mailboxSection.style.display === "none") {
     mailboxSection.style.display = "block";
     fetchInvitations();
   } else {
     mailboxSection.style.display = "none";
+    updateInvitationBadge(0);
   }
 });
 
-// Einladungen abrufen (Details) und Badge aktualisieren
 function fetchInvitations() {
   fetch(`${invitationDbUrl}/_all_docs?include_docs=true`, {
     method: "GET",
@@ -353,28 +565,35 @@ function fetchInvitations() {
     .then(data => {
       const container = document.getElementById("invitationsContainer");
       container.innerHTML = "";
-      const invitations = data.rows
-        .map(row => row.doc)
-        .filter(inv => inv.to === currentUser);
-      updateInvitationBadge(invitations.length);
-      if (invitations.length === 0) {
-        container.innerHTML = "<p>Keine Einladungen.</p>";
+      const mailboxItems = data.rows.map(row => row.doc).filter(item => item.to === currentUser);
+      updateInvitationBadge(mailboxItems.length);
+      if (!mailboxItems.length) {
+        container.innerHTML = "<p>Keine Nachrichten.</p>";
       } else {
-        invitations.forEach(inv => {
+        mailboxItems.forEach(item => {
           const invDiv = document.createElement("div");
           invDiv.classList.add("box");
-          invDiv.innerHTML = `<p>Einladung von <strong>${inv.from}</strong> erhalten am ${new Date(inv.createdAt).toLocaleString()}</p>`;
-          const acceptBtn = document.createElement("button");
-          acceptBtn.textContent = "Annehmen";
-          acceptBtn.classList.add("button", "is-success", "is-small");
-          acceptBtn.style.marginRight = "0.5em";
-          acceptBtn.addEventListener("click", () => acceptInvitation(inv));
-          const declineBtn = document.createElement("button");
-          declineBtn.textContent = "Ablehnen";
-          declineBtn.classList.add("button", "is-danger", "is-small");
-          declineBtn.addEventListener("click", () => declineInvitation(inv));
-          invDiv.appendChild(acceptBtn);
-          invDiv.appendChild(declineBtn);
+          if (item.type === "message") {
+            invDiv.innerHTML = `<p>Nachricht von <strong>${item.from}</strong> erhalten am ${new Date(item.createdAt).toLocaleString()}<br>${item.text}</p>`;
+            const deleteBtn = document.createElement("button");
+            deleteBtn.textContent = "Löschen";
+            deleteBtn.classList.add("button", "is-danger", "is-small");
+            deleteBtn.addEventListener("click", () => deleteMailboxItem(item));
+            invDiv.appendChild(deleteBtn);
+          } else {
+            invDiv.innerHTML = `<p>Einladung von <strong>${item.from}</strong> erhalten am ${new Date(item.createdAt).toLocaleString()}</p>`;
+            const acceptBtn = document.createElement("button");
+            acceptBtn.textContent = "Annehmen";
+            acceptBtn.classList.add("button", "is-success", "is-small");
+            acceptBtn.style.marginRight = "0.5em";
+            acceptBtn.addEventListener("click", () => acceptInvitation(item));
+            const declineBtn = document.createElement("button");
+            declineBtn.textContent = "Ablehnen";
+            declineBtn.classList.add("button", "is-danger", "is-small");
+            declineBtn.addEventListener("click", () => declineInvitation(item));
+            invDiv.appendChild(acceptBtn);
+            invDiv.appendChild(declineBtn);
+          }
           container.appendChild(invDiv);
         });
       }
@@ -382,7 +601,6 @@ function fetchInvitations() {
     .catch(err => console.error("Error fetching invitations:", err));
 }
 
-// Nur die Anzahl der Einladungen holen (für Badge)
 function fetchInvitationBadgeCount() {
   fetch(`${invitationDbUrl}/_all_docs?include_docs=true`, {
     method: "GET",
@@ -390,59 +608,54 @@ function fetchInvitationBadgeCount() {
   })
     .then(response => response.json())
     .then(data => {
-      const invitations = data.rows
-        .map(row => row.doc)
-        .filter(inv => inv.to === currentUser);
-      updateInvitationBadge(invitations.length);
+      const mailboxItems = data.rows.map(row => row.doc).filter(item => item.to === currentUser);
+      updateInvitationBadge(mailboxItems.length);
     })
     .catch(err => console.error("Error fetching invitation count:", err));
 }
 
-// Badge auf dem Postfach-Button aktualisieren
 function updateInvitationBadge(count) {
   const badge = document.getElementById("invitationBadge");
   if (!badge) return;
-  if (count > 0) {
-    badge.style.display = "inline";
-    badge.textContent = count;
-  } else {
-    badge.style.display = "none";
-  }
+  badge.style.display = count > 0 ? "inline" : "none";
+  badge.textContent = count > 0 ? count : "";
 }
 
-// Einladung annehmen
+function deleteMailboxItem(item) {
+  fetch(`${invitationDbUrl}/${item._id}?rev=${item._rev}`, {
+    method: "DELETE",
+    headers: { "Authorization": adminAuthHeader }
+  })
+    .then(() => {
+       alert("Nachricht gelöscht.");
+       fetchInvitations();
+       fetchInvitationBadgeCount();
+    })
+    .catch(err => console.error("Error deleting mailbox item:", err));
+}
+
 function acceptInvitation(invitation) {
-  fetch(`${dbUrl}/_all_docs?include_docs=true`, {
+  fetch(`${userDbUrl}/${encodeURIComponent(invitation.from)}`, {
     method: "GET",
     headers: { "Authorization": adminAuthHeader }
   })
-    .then(response => response.json())
-    .then(data => {
-      const updates = [];
-      data.rows.forEach(row => {
-        const note = row.doc;
-        if (note.owner === invitation.from) {
-          if (!note.sharedWith) note.sharedWith = [];
-          if (!note.sharedWith.includes(currentUser)) {
-            note.sharedWith.push(currentUser);
-            updates.push(
-              fetch(`${dbUrl}/${note._id}`, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json", "Authorization": adminAuthHeader },
-                body: JSON.stringify(note)
-              })
-            );
-          }
-        }
-      });
-      return Promise.all(updates);
+    .then(res => res.json())
+    .then(ownerDoc => {
+      ownerDoc.allowedViewers = ownerDoc.allowedViewers || [];
+      if (!ownerDoc.allowedViewers.includes(invitation.to)) {
+        ownerDoc.allowedViewers.push(invitation.to);
+        return fetch(`${userDbUrl}/${encodeURIComponent(invitation.from)}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json", "Authorization": adminAuthHeader },
+          body: JSON.stringify(ownerDoc)
+        });
+      }
     })
-    .then(() => {
-      return fetch(`${invitationDbUrl}/${invitation._id}?rev=${invitation._rev}`, {
-        method: "DELETE",
-        headers: { "Authorization": adminAuthHeader }
-      });
-    })
+    .then(() => updateNotesForOwner(invitation.from))
+    .then(() => fetch(`${invitationDbUrl}/${invitation._id}?rev=${invitation._rev}`, {
+      method: "DELETE",
+      headers: { "Authorization": adminAuthHeader }
+    }))
     .then(() => {
       alert("Einladung angenommen.");
       fetchInvitations();
@@ -451,7 +664,6 @@ function acceptInvitation(invitation) {
     .catch(err => console.error("Error accepting invitation:", err));
 }
 
-// Einladung ablehnen
 function declineInvitation(invitation) {
   fetch(`${invitationDbUrl}/${invitation._id}?rev=${invitation._rev}`, {
     method: "DELETE",
@@ -464,11 +676,45 @@ function declineInvitation(invitation) {
     .catch(err => console.error("Error declining invitation:", err));
 }
 
+/**
+ * Aktualisiert alle Notizen des Owners so, dass deren
+ * sharedWith-Feld mit dem allowedViewers-Array übereinstimmt.
+ */
+function updateNotesForOwner(owner) {
+  return fetch(`${userDbUrl}/${encodeURIComponent(owner)}`, {
+    method: "GET",
+    headers: { "Authorization": adminAuthHeader }
+  })
+    .then(res => res.json())
+    .then(ownerDoc => {
+      const allowed = ownerDoc.allowedViewers || [];
+      return fetch(`${dbUrl}/_all_docs?include_docs=true`, {
+        headers: { "Authorization": adminAuthHeader }
+      })
+        .then(r => r.json())
+        .then(nData => {
+          const updates = [];
+          nData.rows.forEach(row => {
+            const note = row.doc;
+            if (note.owner === owner) {
+              note.sharedWith = allowed;
+              updates.push(
+                fetch(`${dbUrl}/${note._id}`, {
+                  method: "PUT",
+                  headers: { "Content-Type": "application/json", "Authorization": adminAuthHeader },
+                  body: JSON.stringify(note)
+                })
+              );
+            }
+          });
+          return Promise.all(updates);
+        });
+    });
+}
+
 /* ---------------------------
    ERINNERUNGS-BENACHRICHTIGUNG
----------------------------- */
-
-// Überprüft regelmäßig, ob eine Erinnerung fällig ist
+--------------------------- */
 function checkReminders() {
   fetch(`${dbUrl}/_all_docs?include_docs=true`, {
     method: "GET",
@@ -480,15 +726,10 @@ function checkReminders() {
         const note = row.doc;
         if (note.reminder && !note.notified) {
           const reminderTime = new Date(note.reminder);
-          const now = new Date();
-          if (now >= reminderTime) {
-            // Falls Notification-Erlaubnis vorliegt, wird die Benachrichtigung angezeigt
+          if (new Date() >= reminderTime) {
             if (Notification.permission === "granted") {
-              new Notification("Erinnerung", {
-                body: note.text
-              });
+              new Notification("Erinnerung", { body: note.text });
             }
-            // Aktualisiere den Notiz-Datensatz, damit diese Erinnerung nicht erneut ausgelöst wird
             updateNote(note._id, note._rev, { notified: true });
           }
         }
@@ -496,23 +737,3 @@ function checkReminders() {
     })
     .catch(err => console.error("Error checking reminders:", err));
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
