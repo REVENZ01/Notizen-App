@@ -3,8 +3,9 @@
  * Anzeige des Notizen-Autors (mit Profilbild in der "Von"-Spalte),
  * Checkbox-Status, Badge-Benachrichtigung, "Passwort anzeigen",
  * Systembenachrichtigung bei Erinnerung, Hashing (CryptoJS SHA256)
- * für Passwörter, Profil bearbeiten und Teilnehmerverwaltung
- **************************************************/
+ * für Passwörter, Profil bearbeiten und Teilnehmerverwaltung,
+ * plus SMS‑ähnlicher Chat mit neuen Nachrichten-Badge.
+ **************************************************/ 
 
 // ADMIN-CREDENTIALS (anpassen)
 const adminUser = "admin";
@@ -15,10 +16,12 @@ const adminAuthHeader = "Basic " + btoa(adminUser + ":" + adminPass);
 const dbUrl = "http://127.0.0.1:5984/notizen";
 const userDbUrl = "http://127.0.0.1:5984/users";
 const invitationDbUrl = "http://127.0.0.1:5984/invitations";
+const chatDbUrl = "http://127.0.0.1:5984/chats"; // neue Chat-Datenbank
 
 // Aktuell eingeloggter User
 let currentUser = null;
 let currentUserRole = null;
+let currentChatPartner = null;
 
 // Einfaches statisches Salt (nur Demo)
 const SALT = "myFixedSalt12345";
@@ -56,6 +59,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Teilnehmer-Bereich
   document.getElementById("participantsButton").addEventListener("click", toggleParticipantsSection);
+
+  // Starte Intervall zur Aktualisierung der Chat-Badges (alle 10 Sekunden)
+  setInterval(updateChatBadges, 10000);
 });
 
 /* ---------------------------
@@ -271,13 +277,29 @@ function fetchParticipants() {
           div.style.justifyContent = "space-between";
           div.style.alignItems = "center";
           div.innerHTML = `<span>${participant}</span>`;
+          
+          // Entfernen-Button
           const removeBtn = document.createElement("button");
           removeBtn.textContent = "Entfernen";
           removeBtn.classList.add("button", "is-danger", "is-small");
           removeBtn.addEventListener("click", () => removeParticipant(participant));
           div.appendChild(removeBtn);
+          
+          // Chat-Button (nur wenn nicht eigener Name)
+          if (participant !== currentUser) {
+            const chatBtn = document.createElement("button");
+            chatBtn.textContent = "Chat";
+            chatBtn.classList.add("button", "is-info", "is-small", "chat-btn");
+            chatBtn.setAttribute("data-partner", participant);
+            chatBtn.style.marginLeft = "0.5rem";
+            chatBtn.addEventListener("click", () => openChat(participant));
+            div.appendChild(chatBtn);
+          }
+          
           container.appendChild(div);
         });
+        // Nach dem Rendern der Teilnehmer, aktualisiere die Chat-Badges
+        updateChatBadges();
       }
     })
     .catch(err => console.error(err));
@@ -737,3 +759,147 @@ function checkReminders() {
     })
     .catch(err => console.error("Error checking reminders:", err));
 }
+
+/* ---------------------------
+   CHAT-FUNKTIONALITÄT (SMS-ähnlicher Chat)
+--------------------------- */
+// Öffnet das Chatfenster für einen bestimmten Teilnehmer
+function openChat(partner) {
+  currentChatPartner = partner;
+  document.getElementById("chatPartnerName").textContent = "Chat mit " + partner;
+  document.getElementById("chatModal").classList.add("is-active");
+  fetchChatMessages();
+  markChatMessagesAsRead(partner);
+}
+
+// Schließt das Chatfenster
+document.getElementById("closeChatButton").addEventListener("click", () => {
+  document.getElementById("chatModal").classList.remove("is-active");
+  document.getElementById("chatMessages").innerHTML = "";
+  document.getElementById("chatInput").value = "";
+});
+
+// Lädt Chatnachrichten zwischen currentUser und currentChatPartner
+function fetchChatMessages() {
+  fetch(`${chatDbUrl}/_all_docs?include_docs=true`, {
+    method: "GET",
+    headers: { "Authorization": adminAuthHeader }
+  })
+    .then(response => response.json())
+    .then(data => {
+      const messagesContainer = document.getElementById("chatMessages");
+      messagesContainer.innerHTML = "";
+      // Filtere Nachrichten, die zwischen currentUser und currentChatPartner ausgetauscht wurden
+      const messages = data.rows
+        .map(row => row.doc)
+        .filter(msg =>
+          (msg.from === currentUser && msg.to === currentChatPartner) ||
+          (msg.from === currentChatPartner && msg.to === currentUser)
+        )
+        .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+      messages.forEach(msg => {
+        const msgDiv = document.createElement("div");
+        msgDiv.classList.add("chat-message");
+        // Eigene Nachrichten rechts, Partner-Nachrichten links
+        if (msg.from === currentUser) {
+          msgDiv.classList.add("self");
+        } else {
+          msgDiv.classList.add("partner");
+        }
+        msgDiv.textContent = msg.text;
+        messagesContainer.appendChild(msgDiv);
+      });
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    })
+    .catch(err => console.error("Error fetching chat messages:", err));
+}
+
+// Sende eine Chatnachricht
+document.getElementById("sendChatButton").addEventListener("click", sendChatMessage);
+function sendChatMessage() {
+  const chatInput = document.getElementById("chatInput");
+  const text = chatInput.value.trim();
+  if (!text) return;
+  const message = {
+    from: currentUser,
+    to: currentChatPartner,
+    text: text,
+    timestamp: new Date().toISOString(),
+    read: false
+  };
+  fetch(chatDbUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Authorization": adminAuthHeader },
+    body: JSON.stringify(message)
+  })
+    .then(() => {
+      chatInput.value = "";
+      fetchChatMessages();
+      updateChatBadges();
+    })
+    .catch(err => console.error("Error sending chat message:", err));
+}
+
+// Markiert alle Nachrichten des Chatpartners als gelesen
+function markChatMessagesAsRead(partner) {
+  fetch(`${chatDbUrl}/_all_docs?include_docs=true`, {
+    method: "GET",
+    headers: { "Authorization": adminAuthHeader }
+  })
+    .then(response => response.json())
+    .then(data => {
+      const updatePromises = [];
+      data.rows
+        .map(row => row.doc)
+        .filter(msg => msg.from === partner && msg.to === currentUser && !msg.read)
+        .forEach(msg => {
+          msg.read = true;
+          updatePromises.push(
+            fetch(`${chatDbUrl}/${msg._id}`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json", "Authorization": adminAuthHeader },
+              body: JSON.stringify(msg)
+            })
+          );
+        });
+      return Promise.all(updatePromises);
+    })
+    .then(() => updateChatBadges())
+    .catch(err => console.error("Error marking messages as read:", err));
+}
+
+// Aktualisiert die Chat-Badges für alle Teilnehmer, die Nachrichten an currentUser gesendet haben und noch ungelesen sind
+function updateChatBadges() {
+  fetch(`${chatDbUrl}/_all_docs?include_docs=true`, {
+    method: "GET",
+    headers: { "Authorization": adminAuthHeader }
+  })
+    .then(response => response.json())
+    .then(data => {
+      const unreadCounts = {};
+      data.rows
+        .map(row => row.doc)
+        .forEach(msg => {
+          if (msg.to === currentUser && !msg.read) {
+            unreadCounts[msg.from] = (unreadCounts[msg.from] || 0) + 1;
+          }
+        });
+      // Aktualisiere alle Chat-Buttons in der Teilnehmerliste
+      const participantButtons = document.querySelectorAll(".chat-btn");
+      participantButtons.forEach(btn => {
+        const partner = btn.getAttribute("data-partner");
+        let badge = btn.querySelector(".chat-badge");
+        if (!badge) {
+          badge = document.createElement("span");
+          badge.classList.add("chat-badge");
+          btn.appendChild(badge);
+        }
+        const count = unreadCounts[partner] || 0;
+        badge.textContent = count > 0 ? count : "";
+        badge.style.display = count > 0 ? "inline-block" : "none";
+      });
+    })
+    .catch(err => console.error("Error updating chat badges:", err));
+}
+

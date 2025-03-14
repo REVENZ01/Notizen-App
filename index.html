@@ -177,7 +177,33 @@
     </div>
   </section>
 
+  <!-- Chat Modal (SMS-ähnlicher Chat) -->
+  <div id="chatModal" class="modal">
+    <div class="modal-background"></div>
+    <div class="modal-card">
+      <header class="modal-card-head">
+        <p class="modal-card-title" id="chatPartnerName">Chat</p>
+        <button class="delete" aria-label="close" id="closeChatButton"></button>
+      </header>
+      <section class="modal-card-body">
+        <div id="chatMessages" style="max-height:300px; overflow-y:auto; margin-bottom:1rem;">
+          <!-- Chatnachrichten werden hier geladen -->
+        </div>
+        <div class="field has-addons">
+          <div class="control is-expanded">
+            <input class="input" type="text" placeholder="Nachricht eingeben" id="chatInput">
+          </div>
+          <div class="control">
+            <button class="button is-primary" id="sendChatButton">Senden</button>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
   <!-- Unser eigenes JavaScript -->
   <script src="app.js"></script>
 </body>
 </html>
+
+
