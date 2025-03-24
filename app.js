@@ -37,17 +37,9 @@ function hashPassword(plainText) {
 }
 
 /* ---------------------------
-   INITIALISIERUNG & THEME
+   INITIALISIERUNG
 --------------------------- */
 document.addEventListener("DOMContentLoaded", () => {
-  // Style anpassen
-  document.body.style.setProperty("background-color", "#1e1e2e", "important");
-  document.body.style.setProperty("color", "#f8f8f2", "important");
-  document.querySelectorAll(".container, .table, thead, tbody, tr, th, td").forEach(el => {
-    el.style.setProperty("background-color", "#1e1e2e", "important");
-    el.style.setProperty("color", "#f8f8f2", "important");
-  });
-
   // "Passwort anzeigen"
   const showPwdCheckbox = document.getElementById("showPasswordCheckbox");
   if (showPwdCheckbox) {
@@ -62,6 +54,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Starte Intervall zur Aktualisierung der Chat-Badges (alle 10 Sekunden)
   setInterval(updateChatBadges, 10000);
+
+  // Eventlistener für Kalender-Export-Button
+  const exportBtn = document.getElementById("exportCalendarButton");
+  if (exportBtn) {
+    exportBtn.addEventListener("click", exportToCalendar);
+  }
 });
 
 /* ---------------------------
@@ -281,7 +279,8 @@ function fetchParticipants() {
           // Entfernen-Button
           const removeBtn = document.createElement("button");
           removeBtn.textContent = "Entfernen";
-          removeBtn.classList.add("button", "is-danger", "is-small");
+          removeBtn.classList.add("button");
+          removeBtn.style.marginLeft = "1rem";
           removeBtn.addEventListener("click", () => removeParticipant(participant));
           div.appendChild(removeBtn);
           
@@ -289,9 +288,9 @@ function fetchParticipants() {
           if (participant !== currentUser) {
             const chatBtn = document.createElement("button");
             chatBtn.textContent = "Chat";
-            chatBtn.classList.add("button", "is-info", "is-small", "chat-btn");
-            chatBtn.setAttribute("data-partner", participant);
+            chatBtn.classList.add("button");
             chatBtn.style.marginLeft = "0.5rem";
+            chatBtn.setAttribute("data-partner", participant);
             chatBtn.addEventListener("click", () => openChat(participant));
             div.appendChild(chatBtn);
           }
@@ -352,10 +351,12 @@ function fetchNotes() {
           }
           tdCheckbox.appendChild(checkbox);
           tr.appendChild(tdCheckbox);
-          // Notiztext
+
+          // Notiztext (2. Spalte, handgeschriebene Font in CSS)
           const tdText = document.createElement("td");
           tdText.textContent = note.text;
           tr.appendChild(tdText);
+
           // "Von"-Spalte: Profilbild + Name
           const tdOwner = document.createElement("td");
           const ownerContainer = document.createElement("div");
@@ -368,7 +369,7 @@ function fetchNotes() {
           ownerImg.style.borderRadius = "50%";
           ownerImg.style.marginRight = "8px";
           ownerImg.src = DEFAULT_PROFILE_IMAGE;
-          // Asynchron das tatsächliche Profilbild laden (falls vorhanden)
+          // Profilbild asynchron laden
           fetch(`${userDbUrl}/${encodeURIComponent(note.owner)}`, {
             method: "GET",
             headers: { "Authorization": adminAuthHeader }
@@ -387,32 +388,41 @@ function fetchNotes() {
           ownerContainer.appendChild(ownerName);
           tdOwner.appendChild(ownerContainer);
           tr.appendChild(tdOwner);
+
           // Erinnerung
           const tdReminder = document.createElement("td");
           tdReminder.textContent = note.reminder ? new Date(note.reminder).toLocaleString() : "Keine";
           tr.appendChild(tdReminder);
+
           // Aktionen (Bearbeiten/Löschen)
           const tdActions = document.createElement("td");
           tdActions.classList.add("has-text-right");
+          // Container für Buttons nebeneinander
+          const actionContainer = document.createElement("div");
+          actionContainer.classList.add("action-buttons");
+
           const editBtn = document.createElement("button");
           editBtn.textContent = "Bearbeiten";
-          editBtn.classList.add("button", "is-success", "is-small");
+          editBtn.classList.add("button");
+
+          const deleteBtn = document.createElement("button");
+          deleteBtn.textContent = "Löschen";
+          deleteBtn.classList.add("button");
+
+          // Klick-Events
           editBtn.addEventListener("click", () => {
             const newText = prompt("Neuer Text:", note.text);
             if (newText) updateNote(note._id, note._rev, { text: newText });
           });
-          const deleteBtn = document.createElement("button");
-          deleteBtn.textContent = "Löschen";
-          deleteBtn.classList.add("button", "is-danger", "is-small");
           deleteBtn.addEventListener("click", () => {
             if (confirm("Wirklich löschen?")) deleteNote(note._id, note._rev);
           });
-          const actionDiv = document.createElement("div");
-          actionDiv.classList.add("buttons");
-          actionDiv.appendChild(editBtn);
-          actionDiv.appendChild(deleteBtn);
-          tdActions.appendChild(actionDiv);
+
+          actionContainer.appendChild(editBtn);
+          actionContainer.appendChild(deleteBtn);
+          tdActions.appendChild(actionContainer);
           tr.appendChild(tdActions);
+
           // Checkbox-Event: completed-Status aktualisieren
           checkbox.addEventListener("change", () => {
             const newCompleted = checkbox.checked;
@@ -495,7 +505,6 @@ document.getElementById("noteForm").addEventListener("submit", event => {
 /* ---------------------------
    EINLADUNGEN / NACHRICHTEN (POSTFACH)
 --------------------------- */
-// Einladung senden (wie gehabt)
 document.getElementById("inviteButton").addEventListener("click", inviteUser);
 function inviteUser() {
   const inviteUsername = prompt("Geben Sie den Benutzernamen ein, den Sie einladen möchten:");
@@ -504,7 +513,6 @@ function inviteUser() {
     from: currentUser,
     to: inviteUsername,
     createdAt: new Date().toISOString()
-    // type nicht gesetzt → Einladung
   };
   fetch(invitationDbUrl, {
     method: "POST",
@@ -540,25 +548,25 @@ function sendMessage() {
     .then(data => {
       const userDocs = data.rows.map(row => row.doc);
       const messagePromises = userDocs.map(userDoc => {
-         const messageObj = {
-           from: currentUser,
-           to: userDoc._id,
-           text: messageText,
-           createdAt: new Date().toISOString(),
-           type: "message" // Kennzeichnung als Nachricht
-         };
-         return fetch(invitationDbUrl, {
-           method: "POST",
-           headers: { "Content-Type": "application/json", "Authorization": adminAuthHeader },
-           body: JSON.stringify(messageObj)
-         });
+        const messageObj = {
+          from: currentUser,
+          to: userDoc._id,
+          text: messageText,
+          createdAt: new Date().toISOString(),
+          type: "message"
+        };
+        return fetch(invitationDbUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": adminAuthHeader },
+          body: JSON.stringify(messageObj)
+        });
       });
       return Promise.all(messagePromises);
     })
     .then(() => {
-       alert("Nachricht wurde an alle User gesendet.");
-       fetchInvitationBadgeCount();
-       fetchInvitations();
+      alert("Nachricht wurde an alle User gesendet.");
+      fetchInvitationBadgeCount();
+      fetchInvitations();
     })
     .catch(err => {
       console.error(err);
@@ -566,7 +574,7 @@ function sendMessage() {
     });
 }
 
-// Mailbox öffnen/schließen: Bei Schließen wird die Badge zurückgesetzt
+// Mailbox öffnen/schließen
 document.getElementById("mailboxButton").addEventListener("click", () => {
   const mailboxSection = document.getElementById("invitationsBox");
   if (!mailboxSection.style.display || mailboxSection.style.display === "none") {
@@ -599,19 +607,22 @@ function fetchInvitations() {
             invDiv.innerHTML = `<p>Nachricht von <strong>${item.from}</strong> erhalten am ${new Date(item.createdAt).toLocaleString()}<br>${item.text}</p>`;
             const deleteBtn = document.createElement("button");
             deleteBtn.textContent = "Löschen";
-            deleteBtn.classList.add("button", "is-danger", "is-small");
+            deleteBtn.classList.add("button");
+            deleteBtn.style.marginTop = "0.5rem";
             deleteBtn.addEventListener("click", () => deleteMailboxItem(item));
             invDiv.appendChild(deleteBtn);
           } else {
             invDiv.innerHTML = `<p>Einladung von <strong>${item.from}</strong> erhalten am ${new Date(item.createdAt).toLocaleString()}</p>`;
             const acceptBtn = document.createElement("button");
             acceptBtn.textContent = "Annehmen";
-            acceptBtn.classList.add("button", "is-success", "is-small");
-            acceptBtn.style.marginRight = "0.5em";
+            acceptBtn.classList.add("button");
+            acceptBtn.style.marginRight = "0.5rem";
+            acceptBtn.style.marginTop = "0.5rem";
             acceptBtn.addEventListener("click", () => acceptInvitation(item));
             const declineBtn = document.createElement("button");
             declineBtn.textContent = "Ablehnen";
-            declineBtn.classList.add("button", "is-danger", "is-small");
+            declineBtn.classList.add("button");
+            declineBtn.style.marginTop = "0.5rem";
             declineBtn.addEventListener("click", () => declineInvitation(item));
             invDiv.appendChild(acceptBtn);
             invDiv.appendChild(declineBtn);
@@ -649,9 +660,9 @@ function deleteMailboxItem(item) {
     headers: { "Authorization": adminAuthHeader }
   })
     .then(() => {
-       alert("Nachricht gelöscht.");
-       fetchInvitations();
-       fetchInvitationBadgeCount();
+      alert("Nachricht gelöscht.");
+      fetchInvitations();
+      fetchInvitationBadgeCount();
     })
     .catch(err => console.error("Error deleting mailbox item:", err));
 }
@@ -886,15 +897,15 @@ function updateChatBadges() {
           }
         });
       // Aktualisiere alle Chat-Buttons in der Teilnehmerliste
-      const participantButtons = document.querySelectorAll(".chat-btn");
+      const participantButtons = document.querySelectorAll("[data-partner]");
       participantButtons.forEach(btn => {
-        const partner = btn.getAttribute("data-partner");
         let badge = btn.querySelector(".chat-badge");
         if (!badge) {
           badge = document.createElement("span");
           badge.classList.add("chat-badge");
           btn.appendChild(badge);
         }
+        const partner = btn.getAttribute("data-partner");
         const count = unreadCounts[partner] || 0;
         badge.textContent = count > 0 ? count : "";
         badge.style.display = count > 0 ? "inline-block" : "none";
@@ -903,3 +914,74 @@ function updateChatBadges() {
     .catch(err => console.error("Error updating chat badges:", err));
 }
 
+/* ---------------------------
+   KALENDER-EXPORT-FUNKTION
+--------------------------- */
+function exportToCalendar() {
+  fetch(`${dbUrl}/_all_docs?include_docs=true`, {
+    method: "GET",
+    headers: { "Authorization": adminAuthHeader }
+  })
+    .then(response => response.json())
+    .then(data => {
+      const events = [];
+      data.rows.forEach(row => {
+        const note = row.doc;
+        const isOwner = (note.owner === currentUser);
+        const isShared = Array.isArray(note.sharedWith) && note.sharedWith.includes(currentUser);
+        // Nur Notizen mit Erinnerung, auf die der User Zugriff hat und die nicht als "completed" markiert sind
+        if ((currentUserRole === "admin" || isOwner || isShared) && note.reminder && !note.completed) {
+          events.push(note);
+        }
+      });
+      if (events.length === 0) {
+        alert("Keine Termine mit Erinnerungen gefunden.");
+        return;
+      }
+      let icsContent = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Notizen App//DE\r\nCALSCALE:GREGORIAN\r\n";
+      const now = new Date();
+      const dtstamp = formatDateToICS(now.toISOString());
+      events.forEach(event => {
+        const dtstart = formatDateToICS(event.reminder);
+        // Beispielhaft 1 Stunde Dauer
+        const dtend = formatDateToICS(new Date(new Date(event.reminder).getTime() + 3600000).toISOString());
+        const uid = event._id + "@notizenapp";
+        const summary = escapeICSText(event.text);
+        icsContent += "BEGIN:VEVENT\r\n";
+        icsContent += "UID:" + uid + "\r\n";
+        icsContent += "DTSTAMP:" + dtstamp + "\r\n";
+        icsContent += "DTSTART:" + dtstart + "\r\n";
+        icsContent += "DTEND:" + dtend + "\r\n";
+        icsContent += "SUMMARY:" + summary + "\r\n";
+        icsContent += "END:VEVENT\r\n";
+      });
+      icsContent += "END:VCALENDAR";
+      const blob = new Blob([icsContent], { type: "text/calendar;charset=utf-8" });
+      const link = document.createElement("a");
+      link.href = window.URL.createObjectURL(blob);
+      link.download = "notizen.ics";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    })
+    .catch(err => {
+      console.error("Error exporting calendar:", err);
+      alert("Fehler beim Exportieren der Termine.");
+    });
+}
+
+function formatDateToICS(dateStr) {
+  const date = new Date(dateStr);
+  const pad = (num) => String(num).padStart(2, "0");
+  return date.getUTCFullYear() +
+         pad(date.getUTCMonth() + 1) +
+         pad(date.getUTCDate()) + "T" +
+         pad(date.getUTCHours()) +
+         pad(date.getUTCMinutes()) +
+         pad(date.getUTCSeconds()) + "Z";
+}
+
+function escapeICSText(text) {
+  // Escape von Zeichen (z. B. Komma, Semikolon, Backslash) für ICS-Format
+  return text.replace(/\\/g, "\\\\").replace(/,/g, "\\,").replace(/;/g, "\\;");
+}

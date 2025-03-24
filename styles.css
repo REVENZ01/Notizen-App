@@ -1,89 +1,57 @@
+/* Google-Font für handgeschriebene Optik */
+@import url('https://fonts.googleapis.com/css2?family=Architects+Daughter&display=swap');
+
+/* Farbliche Grundwerte (helle Optik) */
 :root {
-  /* Einheitlicher Hintergrund */
-  --background: #1e293b;
-  --foreground: #f1f5f9;    
-  --primary: #3b82f6;       
-  --secondary: #93c5fd;     
-  --accent: #38bdf8;        
-  --danger: #ef4444;        
-  --gray: #475569;          
-  --selected-bg: #2a2a3a;
+  --page-bg: #ece9e6;        /* Allgemeiner Seitenhintergrund */
+  --text-color: #333;        /* Haupttextfarbe */
+  --input-bg: #fff;          /* Eingabefelder-Hintergrund */
+  --button-bg: #ffe2a9;      /* Buttons in einem hellen Beige/Ton */
+  --button-bg-hover: #ffd78e;/* Button-Hover-Farbe */
+  --border-color: #ccc;      /* Allgemeine Randfarbe */
 }
 
 /* Global */
 html, body {
-  background-color: #1e1e2e;
-  color: var(--foreground) !important;
-  font-family: Arial, sans-serif;
-  min-height: 100%;
   margin: 0;
   padding: 0;
+  font-family: "Helvetica Neue", Arial, sans-serif;
+  background: var(--page-bg);
+  color: var(--text-color);
 }
 
-/* Sektionen & Container */
+/* Container & Sektionen */
 .section, .container {
-  color: var(--foreground) !important;
+  color: var(--text-color) !important;
 }
 
-/* Box */
+/* Boxen (Postfach, Teilnehmer, Profil etc.) */
 .box {
-  background-color: var(--background) !important;
-  color: var(--foreground) !important;
-  border: 1px solid var(--gray) !important;
+  background-color: var(--input-bg) !important;
+  color: var(--text-color) !important;
+  border: 1px solid var(--border-color) !important;
 }
 
-/* Tabelle – nur äußerer Rahmen gerundet */
-.table {
-  border-collapse: separate !important;
-  border-spacing: 0 !important;
-  border-radius: 15px;
-  overflow: hidden;
-  background-color: var(--background) !important;
-  color: var(--foreground) !important;
-  border: 2px solid var(--gray) !important;
-}
-.table th,
-.table td {
-  background-color: var(--background) !important;
-  color: var(--foreground) !important;
-  border-color: var(--gray) !important;
-}
-
-/* Profilbilder in Tabellenzellen */
-.table td img {
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  margin-right: 8px;
-}
-
-/* Formulareingaben */
+/* Eingabefelder */
 .input {
-  background-color: #2a2a3a !important;
-  color: #ffffff !important;
-  border-color: var(--gray) !important;
+  background-color: var(--input-bg) !important;
+  color: var(--text-color) !important;
+  border-color: var(--border-color) !important;
 }
 ::placeholder {
-  color: var(--accent) !important;
+  color: var(--text-color) !important;
+  opacity: 0.5;
 }
 
 /* Buttons */
-.button.is-primary {
-  background-color: var(--primary) !important;
-  border-color: var(--primary) !important;
+.button {
+  background-color: var(--button-bg) !important;
+  color: var(--text-color) !important;
+  border: 1px solid var(--border-color) !important;
 }
-.button.is-primary:hover {
-  background-color: var(--secondary) !important;
-}
-
-/* Markierte Zeilen */
-.selected-row,
-.selected-row td {
-  background-color: var(--selected-bg) !important;
-}
-.selected-row button {
-  pointer-events: none;
-  opacity: 0.5;
+.button:hover {
+  background-color: var(--button-bg-hover) !important;
+  color: var(--text-color) !important;
 }
 
 /* Profilinfo im Header */
@@ -99,7 +67,75 @@ html, body {
   object-fit: cover;
 }
 
-/* --- Chat Modal Styles --- */
+/* Badges (Postfach-Anzahl, Chat-Anzahl) */
+.badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background-color: red;
+  color: white;
+  border-radius: 50%;
+  padding: 4px 8px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  pointer-events: none;
+}
+
+/* Tabellen-Styling an Bulma angelehnt, 
+   aber mit entfernter vertikaler Linie und dickerer horizontaler Linie */
+.table.is-bordered {
+  background-color: var(--input-bg) !important;
+  color: var(--text-color) !important;
+  border-collapse: collapse;
+  width: 100%;
+  /* Wir entfernen die Standard-Bulma-Grenzen und machen eigene */
+  border: none !important;
+}
+
+/* Zellen – vertikale Linien entfernen, horizontale Linien dicker */
+.table.is-bordered th,
+.table.is-bordered td {
+  border-left: none !important;  /* vertikale Linie entfernen */
+  border-right: none !important; /* vertikale Linie entfernen */
+  border-top: none !important;   /* wir nutzen nur unten */
+  border-bottom: 3px solid var(--border-color) !important; /* dickere horizontale Linie */
+  padding: 0.75rem !important;
+  vertical-align: middle !important;
+}
+
+/* Damit wir im Header eine horizontale Linie unten haben, 
+   aber oben, links, rechts bleiben ohne Rahmen */
+.table.is-bordered thead tr th {
+  font-weight: bold;
+}
+
+/* Letzte Zeile soll evtl. nicht "überhängen" – 
+   wenn man unten keinen Rand will, könnte man hier anpassen:
+   .table.is-bordered tbody tr:last-child td { border-bottom: none !important; } */
+
+/* Handgeschriebene Optik nur in der Spalte "Notiz" (2. Spalte) */
+.table.is-bordered th:nth-child(2),
+.table.is-bordered td:nth-child(2) {
+  font-family: 'Architects Daughter', cursive;
+  font-size: 1.1rem;
+}
+
+/* Checkboxen in Notizen */
+.selected-row {
+  opacity: 0.7;
+}
+.selected-row button {
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+/* Buttons in der letzten Spalte sollen nebeneinander stehen */
+.action-buttons {
+  display: inline-flex;
+  gap: 0.5rem;
+}
+
+/* Chat Modal Styles */
 #chatModal {
   position: fixed;
   top: 0;
@@ -119,13 +155,13 @@ html, body {
 }
 #chatModal .modal-card-head,
 #chatModal .modal-card-foot {
-  background-color: var(--background);
-  color: var(--foreground);
+  background-color: var(--input-bg);
+  color: var(--text-color);
   border: none;
 }
 #chatModal .modal-card-body {
-  background-color: var(--background);
-  color: var(--foreground);
+  background-color: var(--input-bg);
+  color: var(--text-color);
 }
 
 /* Chat Nachrichten */
@@ -138,19 +174,17 @@ html, body {
   word-wrap: break-word;
 }
 .chat-message.self {
-  background-color: var(--primary);
-  color: var(--foreground);
+  background-color: #ffe2a9;
+  color: var(--text-color);
   margin-left: auto;
   text-align: right;
 }
 .chat-message.partner {
-  background-color: var(--secondary);
-  color: var(--foreground);
+  background-color: #ffd78e;
+  color: var(--text-color);
   margin-right: auto;
   text-align: left;
 }
-
-/* Chat Badge (bei Chat-Buttons) */
 .chat-badge {
   background-color: red;
   color: white;

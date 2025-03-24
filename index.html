@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
   <title>Notizen & Erinnerungen</title>
   <!-- Bulma CSS laden -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
@@ -11,28 +11,12 @@
 
   <!-- CryptoJS für SHA256 Hashing -->
   <script src="https://cdn.jsdelivr.net/npm/crypto-js@4.1.1/crypto-js.min.js"></script>
-
-  <!-- Inline-Styles für den Badge -->
-  <style>
-    .badge {
-      position: absolute;
-      top: -8px;
-      right: -8px;
-      background-color: red;
-      color: white;
-      border-radius: 50%;
-      padding: 4px 8px;
-      font-size: 0.8rem;
-      font-weight: bold;
-      pointer-events: none;
-    }
-  </style>
 </head>
 <body>
   <!-- Login/Registrierungs-Sektion -->
   <section id="loginSection" class="section">
     <div class="container">
-      <h1 class="title" style="color: var(--primary);">Login</h1>
+      <h1 class="title">Login</h1>
       
       <div class="field">
         <label class="label">Benutzername</label>
@@ -58,10 +42,10 @@
 
       <div class="field is-grouped" style="margin-top: 1rem;">
         <div class="control">
-          <button id="loginButton" class="button is-primary">Login</button>
+          <button id="loginButton" class="button">Login</button>
         </div>
         <div class="control">
-          <button id="registerButton" class="button is-info">Registrieren</button>
+          <button id="registerButton" class="button">Registrieren</button>
         </div>
       </div>
     </div>
@@ -70,7 +54,7 @@
   <!-- Profil bearbeiten Ansicht (separate Seite) -->
   <section id="profileSection" class="section" style="display:none;">
     <div class="container">
-      <h1 class="title" style="color: var(--primary);">Profil bearbeiten</h1>
+      <h1 class="title">Profil bearbeiten</h1>
       <form id="profileForm" class="box">
         <div class="field">
           <label class="label">Neuer Benutzername</label>
@@ -92,10 +76,10 @@
         </div>
         <div class="field is-grouped">
           <div class="control">
-            <button type="button" id="saveProfileButton" class="button is-primary">Speichern</button>
+            <button type="button" id="saveProfileButton" class="button">Speichern</button>
           </div>
           <div class="control">
-            <button type="button" id="cancelProfileButton" class="button is-danger">Abbrechen</button>
+            <button type="button" id="cancelProfileButton" class="button">Abbrechen</button>
           </div>
         </div>
       </form>
@@ -116,23 +100,23 @@
         <div class="level-right">
           <div class="buttons">
             <!-- Postfach-Button mit Badge -->
-            <button id="mailboxButton" class="button is-info" style="position: relative;">
+            <button id="mailboxButton" class="button" style="position: relative;">
               Postfach
               <span id="invitationBadge" class="badge" style="display: none;">0</span>
             </button>
             <!-- Admin: Nur der Admin sieht "Benutzer einladen" und "Nachricht" -->
-            <button id="inviteButton" class="button is-info">Benutzer einladen</button>
-            <button id="messageButton" class="button is-info" style="display:none;">Nachricht</button>
-            <button id="profileButton" class="button is-warning">Profil bearbeiten</button>
-            <button id="participantsButton" class="button is-link">Teilnehmer</button>
-            <button id="logoutButton" class="button is-danger">Logout</button>
+            <button id="inviteButton" class="button">Benutzer einladen</button>
+            <button id="messageButton" class="button" style="display:none;">Nachricht</button>
+            <button id="profileButton" class="button">Profil bearbeiten</button>
+            <button id="participantsButton" class="button">Teilnehmer</button>
+            <button id="logoutButton" class="button">Logout</button>
           </div>
         </div>
       </div>
 
       <!-- Teilnehmer-Box (nur für Owner) -->
       <div id="participantsSection" class="box" style="display:none;">
-        <h2 class="subtitle" style="color: var(--accent);">Teilnehmer</h2>
+        <h2 class="subtitle">Teilnehmer</h2>
         <div id="participantsContainer">
           <!-- Hier werden die aktuellen Teilnehmer (allowedViewers) angezeigt -->
         </div>
@@ -140,7 +124,7 @@
 
       <!-- Postfach (Nachrichten) -->
       <div id="invitationsBox" class="box" style="display:none;">
-        <h2 class="subtitle" style="color: var(--accent);">Nachrichten</h2>
+        <h2 class="subtitle">Nachrichten</h2>
         <div id="invitationsContainer">
           <!-- Hier werden Nachrichten (und ggf. noch Einladungen) angezeigt -->
         </div>
@@ -155,12 +139,12 @@
           <input type="datetime-local" id="reminderTime" class="input">
         </div>
         <div class="control">
-          <button type="submit" class="button is-primary">Speichern</button>
+          <button type="submit" class="button">Speichern</button>
         </div>
       </form>
 
-      <!-- Notizen-Tabelle (ohne Teilnehmer-Spalte) -->
-      <table class="table is-bordered is-fullwidth">
+      <!-- Notizen-Tabelle (standard Bulma-Optik) -->
+      <table class="table is-bordered is-fullwidth" id="notesTable">
         <thead>
           <tr>
             <th style="width:5%;">✓</th>
@@ -174,6 +158,13 @@
           <!-- Dynamisch befüllte Zeilen -->
         </tbody>
       </table>
+
+      <!-- Button: Kalender-Export -->
+      <div class="field" style="margin-top: 1rem;">
+        <div class="control">
+          <button id="exportCalendarButton" class="button">Termine in Kalender eintragen</button>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -194,7 +185,7 @@
             <input class="input" type="text" placeholder="Nachricht eingeben" id="chatInput">
           </div>
           <div class="control">
-            <button class="button is-primary" id="sendChatButton">Senden</button>
+            <button class="button" id="sendChatButton">Senden</button>
           </div>
         </div>
       </section>
@@ -205,5 +196,3 @@
   <script src="app.js"></script>
 </body>
 </html>
-
-
