@@ -1,8 +1,21 @@
-# Verwende ein leichtgewichtiges Nginx-Image
-FROM nginx:alpine
+FROM node:18
 
-# Kopiere alle Dateien aus dem aktuellen Verzeichnis in den Standard-Nginx-Ordner
-COPY . /usr/share/nginx/html
+# Installiere zusätzlich einen HTTP-Server (serve)
+RUN npm install -g serve
 
-# Optional: Falls du ein eigenes nginx.conf verwenden möchtest, kannst du diese Zeile aktivieren:
-# COPY nginx.conf /etc/nginx/nginx.conf
+# Erstelle App-Verzeichnis
+WORKDIR /usr/src/app
+
+# Kopiere App-Dateien
+COPY app ./app
+COPY open-browser.js ./open-browser.js
+COPY entrypoint.sh ./entrypoint.sh
+
+# Gib Rechte auf Entrypoint
+RUN chmod +x ./entrypoint.sh
+
+# Installiere optional xdg-open (für Browserstart in vielen Distros)
+RUN apt-get update && apt-get install -y xdg-utils curl
+
+# Starte Entrypoint beim Containerstart
+CMD ["./entrypoint.sh"]

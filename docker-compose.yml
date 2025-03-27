@@ -1,15 +1,9 @@
-version: '3.8'
+version: '3.9'
 
 services:
-  app:
-    build: .
-    ports:
-      - "8080:80"
-    depends_on:
-      - couchdb
-
   couchdb:
-    image: couchdb:3.2.2
+    image: couchdb:3.3
+    container_name: couchdb
     ports:
       - "5984:5984"
     environment:
@@ -17,6 +11,18 @@ services:
       - COUCHDB_PASSWORD=187LOL187
     volumes:
       - couchdb_data:/opt/couchdb/data
+    restart: unless-stopped
+
+  notizen-app:
+    build: .
+    ports:
+      - "3000:3000"
+    depends_on:
+      - couchdb
+    volumes:
+      - ./app:/usr/src/app/app
+    stdin_open: true
+    tty: true
 
 volumes:
   couchdb_data:

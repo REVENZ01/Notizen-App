@@ -13,10 +13,10 @@ const adminPass = "187LOL187";
 const adminAuthHeader = "Basic " + btoa(adminUser + ":" + adminPass);
 
 // Datenbank-URLs
-const dbUrl = "http://127.0.0.1:5984/notizen";
-const userDbUrl = "http://127.0.0.1:5984/users";
-const invitationDbUrl = "http://127.0.0.1:5984/invitations";
-const chatDbUrl = "http://127.0.0.1:5984/chats"; // neue Chat-Datenbank
+const dbUrl = "http://localhost:5984/notizen";
+const userDbUrl = "http://localhost:5984/users";
+const invitationDbUrl = "http://localhost:5984/invitations";
+const chatDbUrl = "http://localhost:5984/chats"; // neue Chat-Datenbank
 
 // Aktuell eingeloggter User
 let currentUser = null;
