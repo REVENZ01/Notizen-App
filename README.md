@@ -2,7 +2,7 @@
 
 Docker-Container starten:
 
-1. Docker-Desktop herunterladen
+1. Docker-Desktop herunterladen (V. 4.38.0)
 2. ZIP-Ordner des Projekts entpacken
 3. Ordner in CMD ansteuern 
 4. docker container starten in cmd mit: docker compose up -d
